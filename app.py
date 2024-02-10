@@ -24,7 +24,7 @@ except InvalidQueryParam as e:
 
 with st.sidebar:
     st.header('SkipNovo')
-    st.markdown('A tool for de novo peptide sequencing.')
+    st.markdown('A tool for denovo peptide sequencing.')
 
     c1, c2, c3 = st.columns(3)
 
