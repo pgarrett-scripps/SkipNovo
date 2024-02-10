@@ -23,7 +23,6 @@ except InvalidQueryParam as e:
     st.stop()
 
 with st.sidebar:
-
     st.header('SkipNovo')
     st.markdown('A tool for de novo peptide sequencing.')
 
@@ -42,6 +41,11 @@ with st.sidebar:
     max_steps = c3.number_input(
         label='Max Steps',
         value=qp.max_steps
+    )
+
+    keep_n_rows = st.number_input(
+        label='Keep N Rows',
+        value=qp.keep_n_rows
     )
 
     ppm = st.number_input(
@@ -162,25 +166,23 @@ with st.sidebar:
             for residue in st.session_state[f'static_mod_residue{r}']:
                 static_mods[residue] = mod
 
-
-
     with st.expander('Variable Modifications'):
 
         c1, c2 = st.columns(2)
         n_term_var_mod = c1.number_input(label='N-term var mod',
-                                            value=qp.n_term_var_mod,
-                                            help='Apply a static modification to the N-terminus')
+                                         value=qp.n_term_var_mod,
+                                         help='Apply a static modification to the N-terminus')
 
         c_term_var_mod = c2.number_input(label='C-term var mod',
-                                            value=qp.c_term_var_mod,
-                                            help='Apply a static modification to the C-terminus')
+                                         value=qp.c_term_var_mod,
+                                         help='Apply a static modification to the C-terminus')
 
         num_var_mods = st.number_input(label='Number of unique var modifications',
-                                          min_value=0,
-                                          max_value=10,
-                                          value=qp.num_var_mods,
-                                          step=1,
-                                          help='Add another modification row')
+                                       min_value=0,
+                                       max_value=10,
+                                       value=qp.num_var_mods,
+                                       step=1,
+                                       help='Add another modification row')
 
         # columns to lay out the inputs
         grid = st.columns([3, 2])
@@ -232,6 +234,7 @@ qp_new = QueryParams(
     peak_picker_mass_tolerance=peak_picker_mass_tolerance,
     min_charge=min_charge,
     max_charge=max_charge,
+    keep_n_rows=keep_n_rows,
     n_term_static_mod=n_term_static_mod,
     c_term_static_mod=c_term_static_mod,
     num_static_mods=num_static_mods,
@@ -241,7 +244,6 @@ qp_new = QueryParams(
     num_var_mods=num_var_mods,
     var_mods=var_mods
 )
-
 
 url = generate_app_url(qp_new)
 url_chars = len(url)
@@ -329,7 +331,7 @@ with st.spinner('Creating interval tree...'):
             Interval(seq_mz - offset, seq_mz + offset, (seq_mz, intensity)))
 
 # add precursor_mh to spectra_tree
-#spectra_tree.add(Interval(precursor_mh - precursor_mh * ppm / 1_000_000, precursor_mh + precursor_mh * ppm / 1_000_000, (precursor_mh, 1_000_000)))
+# spectra_tree.add(Interval(precursor_mh - precursor_mh * ppm / 1_000_000, precursor_mh + precursor_mh * ppm / 1_000_000, (precursor_mh, 1_000_000)))
 
 with st.spinner('Finding matches...'):
     def find_matches(seqs):
@@ -392,6 +394,7 @@ def update_df(df, subsequence_counts):
     max_len = df['length'].max()
     df = df[df['length'] == max_len]
     return df
+
 
 y_df = update_df(y_df, y_subsequence_counts)
 
@@ -545,7 +548,6 @@ for i in range(1, step_size + 1):
 
 
 def fast_score(old_sequence, new_step):
-
     y_scores, y_int_scores = 0, 0
     y_complete_scores, y_complete_int_scores = 0, 0
 
@@ -561,7 +563,7 @@ def fast_score(old_sequence, new_step):
                 y_int_scores += match.data[1]
 
             # TODO: Fix this issue... no worky im dumb im dumb
-            inverse_ion = (precursor_mass + 1.007276*c) / c - y_ion + 1.007276
+            inverse_ion = (precursor_mass + 1.007276 * c) / c - y_ion + 1.007276
 
             for match in wide_spectra_tree[inverse_ion]:
                 y_complete_scores += 1
@@ -575,19 +577,23 @@ with st.spinner('Calculating valid sequences...'):
         for s in range(max_steps):
 
             data = []
-            for seq, m, i, cm, ci in y_df[['sequence', 'matches', 'intensity', 'complement_matches', 'complement_intensity']].values:
+            for seq, m, i, cm, ci in y_df[
+                ['sequence', 'matches', 'intensity', 'complement_matches', 'complement_intensity']].values:
                 for new_step in step_sequences:
-                    y_scores, y_int_scores, y_complete_scores, y_complete_int_scores, new_sequence = fast_score(seq, new_step)
-                    data.append([new_sequence, m+y_scores, i+y_int_scores, cm+y_complete_scores, ci+y_complete_int_scores])
+                    y_scores, y_int_scores, y_complete_scores, y_complete_int_scores, new_sequence = fast_score(seq,
+                                                                                                                new_step)
+                    data.append([new_sequence, m + y_scores, i + y_int_scores, cm + y_complete_scores,
+                                 ci + y_complete_int_scores])
 
-            y_df = pd.DataFrame(data, columns=['sequence', 'matches', 'intensity', 'complement_matches', 'complement_intensity'])
+            y_df = pd.DataFrame(data, columns=['sequence', 'matches', 'intensity', 'complement_matches',
+                                               'complement_intensity'])
 
-            #new_sequences = [step_sequence + seq for seq in y_df['sequence'] for step_sequence in step_sequences]
-            #y_fragment_ions = fragment_perms(new_sequences, 'y')
-            #y_scores, y_int_scores = get_matches(y_fragment_ions)
-            #y_complete_scores, y_complete_int_scores = get_complement_matches(y_fragment_ions)
-            #y_df = make_perm_df(y_scores, y_int_scores)
-            #y_df = update_complete_df(y_df, y_complete_scores, y_complete_int_scores)
+            # new_sequences = [step_sequence + seq for seq in y_df['sequence'] for step_sequence in step_sequences]
+            # y_fragment_ions = fragment_perms(new_sequences, 'y')
+            # y_scores, y_int_scores = get_matches(y_fragment_ions)
+            # y_complete_scores, y_complete_int_scores = get_complement_matches(y_fragment_ions)
+            # y_df = make_perm_df(y_scores, y_int_scores)
+            # y_df = update_complete_df(y_df, y_complete_scores, y_complete_int_scores)
 
             y_df['mz'] = [calculate_mz(sequence=seq, ion_type='y', charge=1) for seq in y_df['sequence']]
             y_df['comb_seq'] = [sort_sequence(seq) for seq in y_df['sequence']]
@@ -595,10 +601,10 @@ with st.spinner('Calculating valid sequences...'):
 
             # score should be matches * intensity + (complement_matches * complement_intensity)*0.5
             y_df['score'] = (y_df['matches'] * y_df['intensity'] + (
-                        y_df['complement_matches'] * y_df['complement_intensity'])) / y_df['len']*0.5
+                    y_df['complement_matches'] * y_df['complement_intensity'])) / y_df['len'] * 0.5
 
             valid_row_flags = (y_df['mz'] <= precursor_mh + precursor_mh * ppm / 1_000_000) & (
-                        y_df['mz'] >= precursor_mh - precursor_mh * ppm / 1_000_000)
+                    y_df['mz'] >= precursor_mh - precursor_mh * ppm / 1_000_000)
 
             valid_df = y_df[valid_row_flags]
             valid_rows.append(valid_df)
@@ -608,8 +614,6 @@ with st.spinner('Calculating valid sequences...'):
             y_df = y_df.sort_values(by=['score'], ascending=False)
             y_df = y_df.groupby('mz').first().reset_index()
             y_df = y_df.sort_values(by=['score'], ascending=False)
-
-
 
             y_df = y_df.head(100)
 

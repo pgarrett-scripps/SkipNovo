@@ -34,6 +34,7 @@ class QueryParams:
     peak_picker_mass_tolerance: float
     min_charge: int
     max_charge: int
+    keep_n_rows: int
 
     n_term_static_mod: float
     c_term_static_mod: float
@@ -144,6 +145,8 @@ def parse_query_params(query_params: dict) -> QueryParams:
     min_charge = validate_int(query_params.get('min_charge', 1))
     max_charge = validate_int(query_params.get('max_charge', 1))
 
+    keep_n_rows = validate_int(query_params.get('keep_n_rows', 100))
+
     n_term_static_mod = validate_float(query_params.get('n_term_static_mod', 0.0))
     c_term_static_mod = validate_float(query_params.get('c_term_static_mod', 0.0))
     num_static_mods = validate_int(query_params.get('num_static_mods', 1))
@@ -172,6 +175,7 @@ def parse_query_params(query_params: dict) -> QueryParams:
         peak_picker_mass_tolerance=peak_picker_mass_tolerance,
         min_charge=min_charge,
         max_charge=max_charge,
+        keep_n_rows=keep_n_rows,
         n_term_static_mod=n_term_static_mod,
         c_term_static_mod=c_term_static_mod,
         num_static_mods=num_static_mods,
@@ -212,6 +216,7 @@ def generate_app_url(qp: QueryParams) -> str:
         'peak_picker_mass_tolerance': qp.peak_picker_mass_tolerance,
         'min_charge': qp.min_charge,
         'max_charge': qp.max_charge,
+        'keep_n_rows': qp.keep_n_rows,
         'n_term_static_mod': qp.n_term_static_mod,
         'c_term_static_mod': qp.c_term_static_mod,
         'num_static_mods': qp.num_static_mods,
